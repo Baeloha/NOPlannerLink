@@ -198,6 +198,17 @@ namespace NOPlannerLink
             jammingMe.Clear();
         }
 
+        public string? MissionJson(out string? name)
+        {
+            name = null;
+            if (!GameManager.gameState.IsSingleOrMultiplayer()) return null;
+            var m = MissionManager.CurrentMission;
+            if (m == null) return null;
+            name = m.Name;
+            // Same serializer the game uses to save mission files, so the planner parses it like an uploaded .json.
+            return NuclearOption.SavedMission.NewtonsoftHelper.ToJson(m, prettyPrint: false);
+        }
+
         public string? SelectTarget(string op, string? id, IntelMode mode)
         {
             if (mode != IntelMode.Side) return "target selection only works in Detected mode";

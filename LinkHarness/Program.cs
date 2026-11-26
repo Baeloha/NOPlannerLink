@@ -15,7 +15,7 @@ var missionPath = argv.FirstOrDefault(a => a.EndsWith(".json", StringComparison.
 var world = new FakeWorld(faction, allowAll, missionPath);
 using var server = new WsServer(port, new OriginPolicy("*").Allowed, Console.WriteLine);
 server.Start();
-var link = new LinkService(server, IntelMode.Side, 4, "1.2.0-harness");
+var link = new LinkService(server, IntelMode.Side, 4, "1.3.0-harness");
 Console.WriteLine($"Fake game on ws://localhost:{port} · faction {faction} · allowAll={allowAll} · {world.Describe()}");
 var clock = System.Diagnostics.Stopwatch.StartNew();
 while (true)
@@ -37,6 +37,10 @@ sealed class FakeWorld : IWorldSource
     private List<string>? targets; // my aircraft's target list (first = primary); the planner can change it
     private readonly HashSet<string> visible = new();
     public IReadOnlyCollection<string> Destroyed => destroyed;
+
+    private readonly string? missionText;
+    private readonly string? missionName;
+    public string? MissionJson(out string? name) { name = missionName; return missionText; }
 
     public string? SelectTarget(string op, string? id, IntelMode effective)
     {
@@ -61,7 +65,9 @@ sealed class FakeWorld : IWorldSource
         this.allowAll = allowAll;
         if (missionPath != null)
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(missionPath));
+            missionText = File.ReadAllText(missionPath);
+            missionName = Path.GetFileNameWithoutExtension(missionPath);
+            using var doc = JsonDocument.Parse(missionText);
             foreach (var (list, kind) in new[] { ("vehicles", "ground"), ("buildings", "building"), ("ships", "ship") })
             {
                 if (!doc.RootElement.TryGetProperty(list, out var arr)) continue;

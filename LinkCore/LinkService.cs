@@ -20,6 +20,12 @@ namespace NOPlannerLink.Core
         /// targets you could pick on the in-game map. Returns null when done, else the reason it was refused.
         /// </summary>
         string? SelectTarget(string op, string? id, IntelMode effective);
+
+        /// <summary>
+        /// The running mission in the game's own mission-file JSON (what the planner loads from a .json),
+        /// or null when not in a mission. <paramref name="name"/> = mission name.
+        /// </summary>
+        string? MissionJson(out string? name);
     }
 
     /// <summary>
@@ -52,7 +58,16 @@ namespace NOPlannerLink.Core
             List<string>? targetCmds = null;
             while (server.Incoming.TryDequeue(out var cmd))
             {
-                if (JsonFields.GetString(cmd, "type") == "target") (targetCmds ??= new List<string>()).Add(cmd);
+                var type = JsonFields.GetString(cmd, "type");
+                if (type == "target") (targetCmds ??= new List<string>()).Add(cmd);
+                else if (type == "getMission")
+                {
+                    // On the game thread: the mission object may only be read here.
+                    string? name = null, json = null, error = null;
+                    try { json = world.MissionJson(out name); if (json == null) error = "not in a mission"; }
+                    catch (System.Exception ex) { error = ex.Message; }
+                    server.Broadcast(FrameEncoder.Mission(name, json, error));
+                }
                 else HandleCommand(cmd);
             }
             if (targetCmds != null)

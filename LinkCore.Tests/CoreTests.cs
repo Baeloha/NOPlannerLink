@@ -78,6 +78,17 @@ public class EncoderTests
     }
 
     [Fact]
+    public void MissionMessageCarriesTheFileAsAString()
+    {
+        var json = "{\"Name\":\"A \\\"quoted\\\" mission\",\"vehicles\":[]}";
+        var m = JsonDocument.Parse(FrameEncoder.Mission("A", json, null)).RootElement;
+        Assert.Equal("mission", m.GetProperty("type").GetString());
+        Assert.Equal(json, m.GetProperty("json").GetString());
+        var err = JsonDocument.Parse(FrameEncoder.Mission(null, null, "not in a mission")).RootElement;
+        Assert.Equal("not in a mission", err.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public void SlowDriftEventuallyCrossesThreshold()
     {
         var enc = new FrameEncoder();
@@ -115,6 +126,7 @@ public class ServerTests
 {
     private sealed class World : IWorldSource
     {
+        public string? MissionJson(out string? name) { name = "Test"; return "{\"JsonVersion\":6}"; }
         public string? SelectTarget(string op, string? id, IntelMode effective) => effective == IntelMode.Side ? null : "only in Detected mode";
         public double X;
         public SessionInfo Session(IntelMode r) => new() { InMission = true, Role = "single", AllowAll = true, Intel = r };

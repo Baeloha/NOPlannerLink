@@ -9,6 +9,7 @@ A BepInEx 5 mod for **Nuclear Option** that streams the running game to the **NO
 - enemy radars that paint you are drawn as yellow lines to your plane, like on the in-game map;
 - missiles coming at you get a red line to your plane, and jamming is shown (JAM badges, purple lines);
 - in Detected mode you can pick targets on the planner map and they are selected in your aircraft (enemies your side has detected only);
+- on the planner's start screen you can load the mission straight from the running game (no .json needed);
 - the targets you lock in your aircraft are marked with a yellow reticle (primary target pulses);
 - when a target is **destroyed** it disappears from the planner map and from route exposure checks;
 - it works in 2D and 3D.

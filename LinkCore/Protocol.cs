@@ -188,6 +188,18 @@ namespace NOPlannerLink.Core
             return w.ToString();
         }
 
+        /// <summary>The running mission file (answer to getMission): {type:"mission", name, json} or {type:"mission", error}.</summary>
+        public static string Mission(string? name, string? json, string? error)
+        {
+            var w = new JsonWriter();
+            w.BeginObject().Prop("type", "mission");
+            if (name != null) w.Prop("name", name);
+            if (json != null) w.Prop("json", json);
+            if (error != null) w.Prop("error", error);
+            w.EndObject();
+            return w.ToString();
+        }
+
         public static string Event(GameEvent e)
         {
             var w = new JsonWriter();
