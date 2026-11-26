@@ -1,0 +1,8 @@
+bin/
+obj/
+dist/
+*.user
+.vs/
+.idea/
+# Game files are never committed (proprietary). Point -p:GameDir at your install.
+raw/

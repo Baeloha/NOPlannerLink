@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    BepInEx 5 plugin for Nuclear Option. Builds against the game's own DLLs, which are NOT
+    part of this repository. Point GameDir at your Nuclear Option install (or a copy of it):
+      dotnet build -c Release -p:GameDir="C:\Program Files (x86)\Steam\steamapps\common\Nuclear Option"
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>NOPlannerLink</AssemblyName>
+    <RootNamespace>NOPlannerLink</RootNamespace>
+    <Version>1.0.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GameDir Condition="'$(GameDir)' == ''">$(MSBuildThisFileDirectory)../../raw/game</GameDir>
+    <Managed>$(GameDir)/NuclearOption_Data/Managed</Managed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The game-independent core is compiled in, so the release is a single DLL. -->
+  <ItemGroup>
+    <Compile Include="../LinkCore/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(GameDir)/BepInEx/core/BepInEx.dll" Private="false" />
+    <Reference Include="$(Managed)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(Managed)/Mirage.dll" Private="false" />
+    <Reference Include="$(Managed)/Mirage.SocketLayer.dll" Private="false" />
+    <Reference Include="$(Managed)/Mirage.Components.dll" Private="false" />
+    <Reference Include="$(Managed)/UnityEngine.dll" Private="false" />
+    <Reference Include="$(Managed)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(Managed)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(Managed)/com.rlabrecque.steamworks.net.dll" Private="false" Condition="Exists('$(Managed)/com.rlabrecque.steamworks.net.dll')" />
+    <Reference Include="$(Managed)/UniTask.dll" Private="false" Condition="Exists('$(Managed)/UniTask.dll')" />
+  </ItemGroup>
+</Project>

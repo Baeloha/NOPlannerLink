@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Game-independent core (protocol, JSON, WebSocket server). Compiled into the plugin DLL
+       as source, and referenced by the harness and tests. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NOPlannerLink.Core</RootNamespace>
+  </PropertyGroup>
+</Project>
