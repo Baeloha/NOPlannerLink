@@ -40,6 +40,7 @@ sealed class FakeWorld : IWorldSource
 
     private readonly string? missionText;
     private readonly string? missionName;
+    private readonly string mapKey = "(None,)";
     public string? MissionJson(out string? name) { name = missionName; return missionText; }
 
     public string? SelectTarget(string op, string? id, IntelMode effective)
@@ -68,6 +69,9 @@ sealed class FakeWorld : IWorldSource
             missionText = File.ReadAllText(missionPath);
             missionName = Path.GetFileNameWithoutExtension(missionPath);
             using var doc = JsonDocument.Parse(missionText);
+            // Report the map like the game does (MapKey.ToString()).
+            if (doc.RootElement.TryGetProperty("MapKey", out var mk) && mk.TryGetProperty("Path", out var mp) && !string.IsNullOrEmpty(mp.GetString()))
+                mapKey = $"(GameWorldPrefab,{mp.GetString()})";
             foreach (var (list, kind) in new[] { ("vehicles", "ground"), ("buildings", "building"), ("ships", "ship") })
             {
                 if (!doc.RootElement.TryGetProperty(list, out var arr)) continue;
@@ -103,7 +107,7 @@ sealed class FakeWorld : IWorldSource
         InMission = true,
         Role = "host",
         Mission = "Harness mission",
-        Map = "Heartland",
+        Map = mapKey,
         LocalFaction = faction,
         LocalPlayer = "You",
         AllowAll = allowAll,
