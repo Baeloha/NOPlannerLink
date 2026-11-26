@@ -15,7 +15,7 @@ var missionPath = argv.FirstOrDefault(a => a.EndsWith(".json", StringComparison.
 var world = new FakeWorld(faction, allowAll, missionPath);
 using var server = new WsServer(port, new OriginPolicy("*").Allowed, Console.WriteLine);
 server.Start();
-var link = new LinkService(server, IntelMode.Side, 4, "harness");
+var link = new LinkService(server, IntelMode.Side, 4, "1.2.0-harness");
 Console.WriteLine($"Fake game on ws://localhost:{port} · faction {faction} · allowAll={allowAll} · {world.Describe()}");
 var clock = System.Diagnostics.Stopwatch.StartNew();
 while (true)
