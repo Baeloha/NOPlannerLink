@@ -61,6 +61,20 @@ namespace NOPlannerLink
             GameManager.GetLocalAircraft(out var myAircraft);
             var cur = new Dictionary<string, Unit>(prev.Count + 16);
 
+            // Units selected as targets in my aircraft (first = primary).
+            Dictionary<Unit, int>? targets = null;
+            var wm = myAircraft != null ? myAircraft.weaponManager : null;
+            if (wm != null)
+            {
+                var list = wm.GetTargetList();
+                if (list != null && list.Count > 0)
+                {
+                    targets = new Dictionary<Unit, int>();
+                    for (int i = 0; i < list.Count; i++)
+                        if (list[i] != null && !targets.ContainsKey(list[i])) targets[list[i]] = i + 1;
+                }
+            }
+
             foreach (var u in UnitRegistry.allUnits.ToArray())
             {
                 if (u == null || u.disabled) continue;
@@ -92,6 +106,7 @@ namespace NOPlannerLink
                     Detected = detected,
                     IsLocal = myAircraft != null && ReferenceEquals(u, myAircraft),
                 };
+                if (targets != null && targets.TryGetValue(u, out var rank)) e.TargetRank = rank;
                 if (u is Aircraft ac)
                 {
                     var pl = ac.Player;

@@ -6,6 +6,7 @@ A BepInEx 5 mod for **Nuclear Option** that streams the running game to the **NO
 - your aircraft moves live on the planner map (cyan), with a trail and a "follow me" option;
 - **players on your team are green**, friendly AI is blue, and enemies are red;
 - tanks, IFVs, SAMs, ships and other units appear at their real positions;
+- the targets you lock in your aircraft are marked with a yellow reticle (primary target pulses);
 - when a target is **destroyed** it disappears from the planner map and from route exposure checks;
 - it works in 2D and 3D.
 
@@ -28,11 +29,11 @@ Every player who wants the live map installs the mod on their own PC.
 2. Open https://nuclear-planner.vercel.app in Chrome or Edge **on the same PC** (a second monitor works well), and load your mission.
 3. Open the **Live** tab and click **Connect to game**. From then on, the planner reconnects by itself.
 
-## Intel: "My side" vs "Everything"
+## Intel: "Detected" vs "Everything"
 
 | Mode | What you see |
 |---|---|
-| **My side** (default) | Your faction's units, neutral units, and enemies your faction has detected, at their last known position. This is the same information as the in-game map. |
+| **Detected** (default; "My side" before 1.1) | Your faction's units, neutral units, and enemies your faction has detected, at their last known position. This is the same information as the in-game map. |
 | **Everything** | Every unit in the game. |
 
 "Everything" is **host-gated**, so the mod can't be used as a wallhack:

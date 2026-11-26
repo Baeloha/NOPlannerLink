@@ -24,6 +24,8 @@ namespace NOPlannerLink.Core
         public bool IsLocal;
         /// <summary>Enemy unit shown because the local faction tracks it (fog-of-war mode).</summary>
         public bool Detected;
+        /// <summary>Position in the local player's weapon target list: 1 = primary target, 2+ = other selected targets, 0 = not targeted.</summary>
+        public int TargetRank;
 
         /// <summary>True if the planner should be told about a change (thresholds keep deltas small).</summary>
         public bool DiffersFrom(EntityState o)
@@ -31,7 +33,7 @@ namespace NOPlannerLink.Core
             return Math.Abs(X - o.X) > 2 || Math.Abs(Y - o.Y) > 2 || Math.Abs(Z - o.Z) > 2
                 || AngleDiff(Heading, o.Heading) > 2 || Math.Abs(Speed - o.Speed) > 2
                 || Alive != o.Alive || Faction != o.Faction || Player != o.Player || Detected != o.Detected
-                || Type != o.Type || IsLocal != o.IsLocal;
+                || Type != o.Type || IsLocal != o.IsLocal || TargetRank != o.TargetRank;
         }
 
         private static double AngleDiff(double a, double b)
@@ -54,6 +56,7 @@ namespace NOPlannerLink.Core
             if (Player != null) w.Prop("player", Player).Prop("isPlayer", true);
             if (IsLocal) w.Prop("isLocal", true);
             if (Detected) w.Prop("detected", true);
+            if (TargetRank > 0) w.Prop("target", TargetRank);
             w.EndObject();
         }
     }

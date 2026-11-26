@@ -47,6 +47,18 @@ public class EncoderTests
     }
 
     [Fact]
+    public void TargetSelectionIsSentAsAChange()
+    {
+        var enc = new FrameEncoder();
+        enc.Snapshot(0, new[] { E("a", 0) });
+        var t = E("a", 0); t.TargetRank = 1;
+        var d = JsonDocument.Parse(enc.Delta(1, new[] { t })!).RootElement;
+        Assert.Equal(1, d.GetProperty("entities")[0].GetProperty("target").GetInt32());
+        var none = JsonDocument.Parse(enc.Delta(2, new[] { E("a", 0) })!).RootElement;
+        Assert.False(none.GetProperty("entities")[0].TryGetProperty("target", out _));
+    }
+
+    [Fact]
     public void SlowDriftEventuallyCrossesThreshold()
     {
         var enc = new FrameEncoder();

@@ -32,7 +32,7 @@ sealed class FakeWorld : IWorldSource
     private readonly HashSet<string> destroyed = new();
     private readonly System.Diagnostics.Stopwatch clock = System.Diagnostics.Stopwatch.StartNew();
     private readonly double cx, cz;
-    private string? victim;
+    private string? victim, second;
     private bool loaded;
     public IReadOnlyCollection<string> Destroyed => destroyed;
 
@@ -65,6 +65,9 @@ sealed class FakeWorld : IWorldSource
         var target = statics.FirstOrDefault(s => s.faction != faction && s.faction != "Neutral" && s.kind == "ground");
         if (target.id == null) target = statics[0];
         victim = target.id;
+        var t0 = target;
+        second = statics.Where(s => s.faction == t0.faction && s.kind == "ground" && s.id != t0.id)
+            .OrderBy(s => (s.x - t0.x) * (s.x - t0.x) + (s.z - t0.z) * (s.z - t0.z)).Select(s => s.id).FirstOrDefault();
         cx = target.x; cz = target.z;
     }
 
@@ -107,6 +110,9 @@ sealed class FakeWorld : IWorldSource
         {
             if (destroyed.Contains(s.id)) continue;
             var e = new EntityState { Id = s.id, Type = s.type, Kind = s.kind, Faction = s.faction, X = s.x, Y = s.y, Z = s.z };
+            // Targets: the victim is my primary target until it dies; the next nearby enemy is selected too.
+            if (s.id == victim) e.TargetRank = 1;
+            else if (s.id == second) e.TargetRank = destroyed.Contains(victim!) ? 1 : 2;
             if (Visible(intel, e, me)) into.Add(e);
         }
         return t;
