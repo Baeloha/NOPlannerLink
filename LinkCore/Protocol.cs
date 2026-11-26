@@ -28,6 +28,14 @@ namespace NOPlannerLink.Core
         public int TargetRank;
         /// <summary>This unit's radar is painting my aircraft (the in-game map's radar line): 0 none, 1 painted, 2 detected me, 3 locked/targeting me.</summary>
         public int RadarOnMe;
+        /// <summary>A missile my aircraft's missile warning knows is coming at me (the in-game incoming-missile warning).</summary>
+        public bool IncomingOnMe;
+        /// <summary>This unit's radar is jammed (the in-game map's JAMMED marker).</summary>
+        public bool Jammed;
+        /// <summary>Id of the unit jamming it, when known (the in-game map draws a line from it).</summary>
+        public string? JammedBy;
+        /// <summary>This unit is jamming my aircraft (in the last ~2 s).</summary>
+        public bool JammingMe;
 
         /// <summary>True if the planner should be told about a change (thresholds keep deltas small).</summary>
         public bool DiffersFrom(EntityState o)
@@ -35,7 +43,7 @@ namespace NOPlannerLink.Core
             return Math.Abs(X - o.X) > 2 || Math.Abs(Y - o.Y) > 2 || Math.Abs(Z - o.Z) > 2
                 || AngleDiff(Heading, o.Heading) > 2 || Math.Abs(Speed - o.Speed) > 2
                 || Alive != o.Alive || Faction != o.Faction || Player != o.Player || Detected != o.Detected
-                || Type != o.Type || IsLocal != o.IsLocal || TargetRank != o.TargetRank || RadarOnMe != o.RadarOnMe;
+                || Type != o.Type || IsLocal != o.IsLocal || TargetRank != o.TargetRank || RadarOnMe != o.RadarOnMe || IncomingOnMe != o.IncomingOnMe || Jammed != o.Jammed || JammedBy != o.JammedBy || JammingMe != o.JammingMe;
         }
 
         private static double AngleDiff(double a, double b)
@@ -60,6 +68,10 @@ namespace NOPlannerLink.Core
             if (Detected) w.Prop("detected", true);
             if (TargetRank > 0) w.Prop("target", TargetRank);
             if (RadarOnMe > 0) w.Prop("radarOnMe", RadarOnMe);
+            if (IncomingOnMe) w.Prop("incoming", true);
+            if (Jammed) w.Prop("jammed", true);
+            if (JammedBy != null) w.Prop("jammedBy", JammedBy);
+            if (JammingMe) w.Prop("jammingMe", true);
             w.EndObject();
         }
     }

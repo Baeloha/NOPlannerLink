@@ -69,6 +69,15 @@ public class EncoderTests
     }
 
     [Fact]
+    public void IncomingMissileIsFlagged()
+    {
+        var enc = new FrameEncoder();
+        var m = E("msl", 0); m.Kind = "missile"; m.IncomingOnMe = true;
+        var s = JsonDocument.Parse(enc.Snapshot(0, new[] { m })).RootElement;
+        Assert.True(s.GetProperty("entities")[0].GetProperty("incoming").GetBoolean());
+    }
+
+    [Fact]
     public void SlowDriftEventuallyCrossesThreshold()
     {
         var enc = new FrameEncoder();
@@ -106,6 +115,7 @@ public class ServerTests
 {
     private sealed class World : IWorldSource
     {
+        public string? SelectTarget(string op, string? id, IntelMode effective) => effective == IntelMode.Side ? null : "only in Detected mode";
         public double X;
         public SessionInfo Session(IntelMode r) => new() { InMission = true, Role = "single", AllowAll = true, Intel = r };
         public double Capture(IntelMode intel, List<EntityState> into, List<GameEvent> events)

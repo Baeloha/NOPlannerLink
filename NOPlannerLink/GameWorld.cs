@@ -20,6 +20,10 @@ namespace NOPlannerLink
         // Radar warnings on my aircraft, like the in-game map's radar lines (DynamicMap.ShowRadarPing).
         private Aircraft? hooked;
         private readonly Dictionary<Unit, (int level, float until)> pings = new Dictionary<Unit, (int, float)>();
+        // Jamming: who last jammed each radar unit (the in-game map's JAMMED marker + line), and who jams me.
+        private readonly Dictionary<Unit, System.Action<Unit.JamEventArgs>> jamHooks = new Dictionary<Unit, System.Action<Unit.JamEventArgs>>();
+        private readonly Dictionary<Unit, (Unit jammer, float t)> jammedBy = new Dictionary<Unit, (Unit, float)>();
+        private readonly Dictionary<Unit, float> jammingMe = new Dictionary<Unit, float>();
 
         public IReadOnlyCollection<string> Destroyed => destroyed;
 
@@ -56,6 +60,7 @@ namespace NOPlannerLink
                 missionRef = mission;
                 destroyed.Clear();
                 prev.Clear();
+                UnhookJamming();
                 events.Add(new GameEvent { Kind = "missionLoaded", Text = mission?.Name });
             }
 
@@ -64,6 +69,14 @@ namespace NOPlannerLink
             GameManager.GetLocalAircraft(out var myAircraft);
             var cur = new Dictionary<string, Unit>(prev.Count + 16);
             HookRadarWarnings(myAircraft);
+            // Missiles my missile warning has picked up (same list that drives the in-game warning and map flash).
+            HashSet<Unit>? incoming = null;
+            var mw = myAircraft != null ? myAircraft.GetMissileWarningSystem() : null;
+            if (mw != null && mw.knownMissiles.Count > 0)
+            {
+                incoming = new HashSet<Unit>();
+                foreach (var m in mw.knownMissiles) if (m != null && !m.disabled) incoming.Add(m);
+            }
             var now = Time.timeSinceLevelLoad;
 
             // Units selected as targets in my aircraft (first = primary).
@@ -89,6 +102,9 @@ namespace NOPlannerLink
                 var pos = u.GlobalPosition();
                 var detected = false;
                 var radarOnMe = pings.TryGetValue(u, out var ping) && ping.until > now ? ping.level : 0;
+                var incomingOnMe = incoming != null && incoming.Contains(u);
+                var hasRadar = u.radar is Radar;
+                if ((hasRadar || ReferenceEquals(u, myAircraft)) && !jamHooks.ContainsKey(u)) HookJamming(u);
                 if (intel == IntelMode.Side && !own && !neutral)
                 {
                     if (hasHq && hq!.trackingDatabase.TryGetValue(u.persistentID, out var info) && info != null)
@@ -97,7 +113,8 @@ namespace NOPlannerLink
                         detected = true;
                     }
                     // The game draws the radar line to the emitter's true position even when it isn't tracked.
-                    else if (radarOnMe == 0) continue;
+                    // Missiles your warning system sees coming at you are shown too (the game flags them on the map).
+                    else if (radarOnMe == 0 && !incomingOnMe) continue;
                 }
 
                 var id = IdOf(u);
@@ -118,6 +135,13 @@ namespace NOPlannerLink
                 };
                 if (targets != null && targets.TryGetValue(u, out var rank)) e.TargetRank = rank;
                 e.RadarOnMe = radarOnMe;
+                e.IncomingOnMe = incomingOnMe;
+                if (hasRadar && ((Radar)u.radar).IsJammed())
+                {
+                    e.Jammed = true;
+                    if (jammedBy.TryGetValue(u, out var jb) && jb.jammer != null && !jb.jammer.disabled && now - jb.t < 5f) e.JammedBy = IdOf(jb.jammer);
+                }
+                if (jammingMe.TryGetValue(u, out var jt) && now - jt < 2f) e.JammingMe = true;
                 if (u is Aircraft ac)
                 {
                     var pl = ac.Player;
@@ -143,6 +167,8 @@ namespace NOPlannerLink
                 if (destroyed.Add(kv.Key)) events.Add(new GameEvent { Kind = "destroyed", T = t, Target = kv.Key, Text = u.definition != null ? u.definition.jsonKey : null });
             }
             prev = cur;
+            // Like the in-game map, only draw a jamming line from a jammer you can see.
+            foreach (var e in into) if (e.JammedBy != null && !cur.ContainsKey(e.JammedBy)) e.JammedBy = null;
             if (pings.Count > 0)
             {
                 List<Unit>? old = null;
@@ -150,6 +176,58 @@ namespace NOPlannerLink
                 if (old != null) foreach (var u in old) pings.Remove(u);
             }
             return t;
+        }
+
+        private void HookJamming(Unit u)
+        {
+            System.Action<Unit.JamEventArgs> h = a =>
+            {
+                if (a.jammingUnit == null) return;
+                jammedBy[u] = (a.jammingUnit, Time.timeSinceLevelLoad);
+                if (ReferenceEquals(u, hooked)) jammingMe[a.jammingUnit] = Time.timeSinceLevelLoad;
+            };
+            u.onJam += h;
+            jamHooks[u] = h;
+        }
+
+        private void UnhookJamming()
+        {
+            foreach (var kv in jamHooks) if (kv.Key != null) kv.Key.onJam -= kv.Value;
+            jamHooks.Clear();
+            jammedBy.Clear();
+            jammingMe.Clear();
+        }
+
+        public string? SelectTarget(string op, string? id, IntelMode mode)
+        {
+            if (mode != IntelMode.Side) return "target selection only works in Detected mode";
+            if (!GameManager.gameState.IsSingleOrMultiplayer()) return "not in a mission";
+            if (!GameManager.GetLocalAircraft(out var me) || me == null || me.disabled) return "you are not flying an aircraft";
+            var hud = SceneSingleton<CombatHUD>.i;
+            if (hud == null || !ReferenceEquals(hud.aircraft, me) || me.weaponManager == null) return "the cockpit HUD isn't ready";
+            if (op == "clear")
+            {
+                hud.DeselectAll(true);
+                return null;
+            }
+            if (id == null || !prev.TryGetValue(id, out var u) || u == null || u.disabled) return "unit not found";
+            if (!GameManager.GetLocalHQ(out var hq) || hq == null) return "you have no side yet";
+            if (u.NetworkHQ == null || u.NetworkHQ == hq) return "only enemy units can be targeted";
+            if (!hq.trackingDatabase.ContainsKey(u.persistentID)) return "your side hasn't detected it";
+            var wm = me.weaponManager;
+            if (op == "remove")
+            {
+                if (!wm.CheckIsTarget(u)) return null;
+                var map = SceneSingleton<DynamicMap>.i;
+                if (map != null && DynamicMap.TryGetMapIcon(u, out _)) map.DeselectIcon(u);
+                if (wm.CheckIsTarget(u)) hud.DeSelectUnit(u);
+                return null;
+            }
+            if (wm.CheckIsTarget(u)) return null;
+            var selector = SceneSingleton<TargetListSelector>.i;
+            if (selector != null && selector.CheckExclusions(u)) return "the selected weapon can't target it";
+            hud.SelectUnit(u);
+            return wm.CheckIsTarget(u) ? null : "the game didn't accept it (no HUD marker for it yet)";
         }
 
         private void HookRadarWarnings(Aircraft? me)

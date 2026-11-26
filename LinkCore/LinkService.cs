@@ -13,6 +13,13 @@ namespace NOPlannerLink.Core
 
         /// <summary>Ids destroyed so far this mission (sent in every snapshot so a late planner still hides them).</summary>
         IReadOnlyCollection<string> Destroyed { get; }
+
+        /// <summary>
+        /// Planner target command: op = add | remove | clear, on the unit with this protocol id.
+        /// Only allowed in Detected (Side) intel and only for enemies the local side tracks — the same
+        /// targets you could pick on the in-game map. Returns null when done, else the reason it was refused.
+        /// </summary>
+        string? SelectTarget(string op, string? id, IntelMode effective);
     }
 
     /// <summary>
@@ -42,7 +49,28 @@ namespace NOPlannerLink.Core
         /// <summary>Call every game frame with a monotonic clock (seconds).</summary>
         public void Tick(double now, IWorldSource world)
         {
-            while (server.Incoming.TryDequeue(out var cmd)) HandleCommand(cmd);
+            List<string>? targetCmds = null;
+            while (server.Incoming.TryDequeue(out var cmd))
+            {
+                if (JsonFields.GetString(cmd, "type") == "target") (targetCmds ??= new List<string>()).Add(cmd);
+                else HandleCommand(cmd);
+            }
+            if (targetCmds != null)
+            {
+                // Applied right away (on the game thread) so the next frame already shows the new target list.
+                var mode = world.Session(Requested).Intel;
+                foreach (var c in targetCmds)
+                {
+                    var op = JsonFields.GetString(c, "op") ?? "add";
+                    var id = JsonFields.GetString(c, "id");
+                    string? refused;
+                    try { refused = world.SelectTarget(op, id, mode); }
+                    catch (System.Exception ex) { refused = "error: " + ex.Message; }
+                    server.Broadcast(FrameEncoder.Event(new GameEvent { Kind = refused == null ? "targetSet" : "targetRefused", Target = id, Text = refused ?? op }));
+                }
+                forceSnapshot = false;
+                nextAt = 0;
+            }
             if (now < nextAt && !server.ClientJoined && !forceSnapshot) return;
             nextAt = now + IntervalS;
 

@@ -16,7 +16,7 @@ namespace NOPlannerLink
     {
         public const string Guid = "NOPlannerLink";
         public const string Name = "NO Planner Link";
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
 
         private ConfigEntry<bool> enabledCfg = null!;
         private ConfigEntry<int> port = null!;

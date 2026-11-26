@@ -1,7 +1,7 @@
 {
   "id": "NOPlannerLink",
   "displayName": "NO Planner Link",
-  "description": "Streams your game to the NO Mission Planner web map (nuclear-planner.vercel.app): your aircraft, your team (green), friendly and enemy units live, your locked targets, enemy radars painting you, and destroyed targets disappear from the plan. Read-only; shows only what your side has detected unless the host enables 'Everything'.",
+  "description": "Streams your game to the NO Mission Planner web map (nuclear-planner.vercel.app): your aircraft, your team (green), friendly and enemy units live, your locked targets, enemy radars painting you, and destroyed targets disappear from the plan. Shows only what your side has detected unless the host enables 'Everything'.",
   "tags": [
     "QoL",
     "Utility"

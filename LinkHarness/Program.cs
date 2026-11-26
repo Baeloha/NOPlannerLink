@@ -34,7 +34,26 @@ sealed class FakeWorld : IWorldSource
     private readonly double cx, cz;
     private string? victim, second;
     private bool loaded;
+    private List<string>? targets; // my aircraft's target list (first = primary); the planner can change it
+    private readonly HashSet<string> visible = new();
     public IReadOnlyCollection<string> Destroyed => destroyed;
+
+    public string? SelectTarget(string op, string? id, IntelMode effective)
+    {
+        if (effective != IntelMode.Side) return "target selection only works in Detected mode";
+        targets ??= new List<string>();
+        if (op == "clear") { targets.Clear(); return null; }
+        if (id == null) return "unit not found";
+        var s = statics.FirstOrDefault(x => x.id == id);
+        var f = s.id != null ? s.faction : id == "p:201" ? "enemy" : null;
+        if (f == null || destroyed.Contains(id)) return "unit not found";
+        if (f == faction || f == "Neutral") return "only enemy units can be targeted";
+        if (!visible.Contains(id)) return "your side hasn't detected it";
+        if (op == "remove") { targets.Remove(id); return null; }
+        if (!targets.Contains(id)) targets.Insert(0, id);
+        Console.WriteLine($"[harness] target list: {string.Join(", ", targets)}");
+        return null;
+    }
 
     public FakeWorld(string faction, bool allowAll, string? missionPath)
     {
@@ -105,15 +124,35 @@ sealed class FakeWorld : IWorldSource
         double d = a + Math.PI;
         var bandit = Plane("p:201", "Fighter1", enemyFaction, cx + 25000 * Math.Sin(d), 5000, cz + 25000 * Math.Cos(d), d, 220, null, false);
         if ((int)t % 10 < 5) bandit.RadarOnMe = 1; // the bandit's radar sweeps me now and then
-        if (Visible(intel, bandit, me) || bandit.RadarOnMe > 0) into.Add(bandit);
+        else bandit.JammingMe = true;               // ...and jams me the rest of the time
+        if (targets != null && targets.Contains(bandit.Id)) bandit.TargetRank = targets.IndexOf(bandit.Id) + 1;
+        if (Visible(intel, bandit, me) || bandit.RadarOnMe > 0) { into.Add(bandit); visible.Add(bandit.Id); }
+        else visible.Remove(bandit.Id);
+
+        // An incoming missile from the locked SAM site between 8 s and 18 s.
+        var src = statics.FirstOrDefault(s => s.id == victim);
+        if (src.id != null && t > 8 && t < 18)
+        {
+            var f = (t - 8) / 10;
+            var msl = new EntityState
+            {
+                Id = "p:301", Type = "AAM2", Kind = "missile", Faction = src.faction,
+                X = src.x + (me.X - src.x) * f, Y = 100 + (me.Y - 100) * f, Z = src.z + (me.Z - src.z) * f,
+                Heading = Math.Atan2(me.X - src.x, me.Z - src.z) * 180 / Math.PI, Speed = 900, IncomingOnMe = true,
+            };
+            into.Add(msl);
+        }
 
         foreach (var s in statics)
         {
             if (destroyed.Contains(s.id)) continue;
             var e = new EntityState { Id = s.id, Type = s.type, Kind = s.kind, Faction = s.faction, X = s.x, Y = s.y, Z = s.z };
-            // Targets: the victim is my primary target until it dies; the next nearby enemy is selected too.
-            if (s.id == victim) e.TargetRank = 1;
-            else if (s.id == second) e.TargetRank = destroyed.Contains(victim!) ? 1 : 2;
+            // Targets: start with the victim (primary) and its neighbour; the planner can change the list.
+            if (targets == null) targets = new List<string> { victim!, second! }.Where(x => x != null).ToList();
+            var rank = targets.Where(x => !destroyed.Contains(x)).ToList().IndexOf(s.id);
+            if (rank >= 0) e.TargetRank = rank + 1;
+            // Jamming: the 'second' radar is jammed by my friendly AI (p:102) in 10 s windows.
+            if (s.id == second && (int)t % 20 >= 10) { e.Jammed = true; e.JammedBy = "p:102"; }
             // Enemy radars near me paint me: the victim locks me, other enemies within 20 km cycle painted → detected.
             if (s.faction != faction && s.faction != "Neutral")
             {
@@ -121,7 +160,8 @@ sealed class FakeWorld : IWorldSource
                 if (s.id == victim) e.RadarOnMe = 3;
                 else if (dist < 20000 && s.kind == "ground" && (s.id.GetHashCode() & 7) == 0) e.RadarOnMe = ((int)t / 3 % 3 == 0) ? 0 : (int)t / 3 % 3;
             }
-            if (Visible(intel, e, me) || e.RadarOnMe > 0) into.Add(e);
+            if (Visible(intel, e, me) || e.RadarOnMe > 0) { into.Add(e); visible.Add(e.Id); }
+            else visible.Remove(e.Id);
         }
         return t;
     }

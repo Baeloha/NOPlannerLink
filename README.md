@@ -7,11 +7,13 @@ A BepInEx 5 mod for **Nuclear Option** that streams the running game to the **NO
 - **players on your team are green**, friendly AI is blue, and enemies are red;
 - tanks, IFVs, SAMs, ships and other units appear at their real positions;
 - enemy radars that paint you are drawn as yellow lines to your plane, like on the in-game map;
+- missiles coming at you get a red line to your plane, and jamming is shown (JAM badges, purple lines);
+- in Detected mode you can pick targets on the planner map and they are selected in your aircraft (enemies your side has detected only);
 - the targets you lock in your aircraft are marked with a yellow reticle (primary target pulses);
 - when a target is **destroyed** it disappears from the planner map and from route exposure checks;
 - it works in 2D and 3D.
 
-The mod is **read-only**: it never changes the game. It opens a WebSocket on `127.0.0.1:8787` (your
+The mod only reads the game, with one exception you trigger yourself: selecting targets for your own aircraft from the planner (Detected mode only, the same targets you could click on the in-game map). It opens a WebSocket on `127.0.0.1:8787` (your
 own PC only), and the planner in your browser connects to it.
 
 ## Install
