@@ -26,6 +26,8 @@ namespace NOPlannerLink.Core
         public bool Detected;
         /// <summary>Position in the local player's weapon target list: 1 = primary target, 2+ = other selected targets, 0 = not targeted.</summary>
         public int TargetRank;
+        /// <summary>This unit's radar is painting my aircraft (the in-game map's radar line): 0 none, 1 painted, 2 detected me, 3 locked/targeting me.</summary>
+        public int RadarOnMe;
 
         /// <summary>True if the planner should be told about a change (thresholds keep deltas small).</summary>
         public bool DiffersFrom(EntityState o)
@@ -33,7 +35,7 @@ namespace NOPlannerLink.Core
             return Math.Abs(X - o.X) > 2 || Math.Abs(Y - o.Y) > 2 || Math.Abs(Z - o.Z) > 2
                 || AngleDiff(Heading, o.Heading) > 2 || Math.Abs(Speed - o.Speed) > 2
                 || Alive != o.Alive || Faction != o.Faction || Player != o.Player || Detected != o.Detected
-                || Type != o.Type || IsLocal != o.IsLocal || TargetRank != o.TargetRank;
+                || Type != o.Type || IsLocal != o.IsLocal || TargetRank != o.TargetRank || RadarOnMe != o.RadarOnMe;
         }
 
         private static double AngleDiff(double a, double b)
@@ -57,6 +59,7 @@ namespace NOPlannerLink.Core
             if (IsLocal) w.Prop("isLocal", true);
             if (Detected) w.Prop("detected", true);
             if (TargetRank > 0) w.Prop("target", TargetRank);
+            if (RadarOnMe > 0) w.Prop("radarOnMe", RadarOnMe);
             w.EndObject();
         }
     }

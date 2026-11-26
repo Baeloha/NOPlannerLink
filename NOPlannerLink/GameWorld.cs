@@ -17,6 +17,9 @@ namespace NOPlannerLink
         private Dictionary<string, Unit> prev = new Dictionary<string, Unit>();
         private readonly HashSet<string> destroyed = new HashSet<string>();
         private object? missionRef;
+        // Radar warnings on my aircraft, like the in-game map's radar lines (DynamicMap.ShowRadarPing).
+        private Aircraft? hooked;
+        private readonly Dictionary<Unit, (int level, float until)> pings = new Dictionary<Unit, (int, float)>();
 
         public IReadOnlyCollection<string> Destroyed => destroyed;
 
@@ -60,6 +63,8 @@ namespace NOPlannerLink
             var hasHq = GameManager.GetLocalHQ(out var hq) && hq != null;
             GameManager.GetLocalAircraft(out var myAircraft);
             var cur = new Dictionary<string, Unit>(prev.Count + 16);
+            HookRadarWarnings(myAircraft);
+            var now = Time.timeSinceLevelLoad;
 
             // Units selected as targets in my aircraft (first = primary).
             Dictionary<Unit, int>? targets = null;
@@ -83,11 +88,16 @@ namespace NOPlannerLink
                 var neutral = unitHq == null;
                 var pos = u.GlobalPosition();
                 var detected = false;
+                var radarOnMe = pings.TryGetValue(u, out var ping) && ping.until > now ? ping.level : 0;
                 if (intel == IntelMode.Side && !own && !neutral)
                 {
-                    if (!hasHq || !hq!.trackingDatabase.TryGetValue(u.persistentID, out var info) || info == null) continue;
-                    pos = info.lastKnownPosition;
-                    detected = true;
+                    if (hasHq && hq!.trackingDatabase.TryGetValue(u.persistentID, out var info) && info != null)
+                    {
+                        pos = info.lastKnownPosition;
+                        detected = true;
+                    }
+                    // The game draws the radar line to the emitter's true position even when it isn't tracked.
+                    else if (radarOnMe == 0) continue;
                 }
 
                 var id = IdOf(u);
@@ -107,6 +117,7 @@ namespace NOPlannerLink
                     IsLocal = myAircraft != null && ReferenceEquals(u, myAircraft),
                 };
                 if (targets != null && targets.TryGetValue(u, out var rank)) e.TargetRank = rank;
+                e.RadarOnMe = radarOnMe;
                 if (u is Aircraft ac)
                 {
                     var pl = ac.Player;
@@ -132,7 +143,32 @@ namespace NOPlannerLink
                 if (destroyed.Add(kv.Key)) events.Add(new GameEvent { Kind = "destroyed", T = t, Target = kv.Key, Text = u.definition != null ? u.definition.jsonKey : null });
             }
             prev = cur;
+            if (pings.Count > 0)
+            {
+                List<Unit>? old = null;
+                foreach (var kv in pings) if (kv.Key == null || kv.Value.until <= now) (old ??= new List<Unit>()).Add(kv.Key!);
+                if (old != null) foreach (var u in old) pings.Remove(u);
+            }
             return t;
+        }
+
+        private void HookRadarWarnings(Aircraft? me)
+        {
+            if (ReferenceEquals(me, hooked)) return;
+            if (hooked != null) hooked.onRadarWarning -= OnRadarWarning;
+            pings.Clear();
+            hooked = me;
+            if (me != null) me.onRadarWarning += OnRadarWarning;
+        }
+
+        private void OnRadarWarning(Aircraft.OnRadarWarning w)
+        {
+            if (w.emitter == null) return;
+            // Same lifetimes as the in-game map line (1 s painted, 2 s detected, 4 s locked) + 0.5 s so a 4 Hz sample sees it.
+            int level = w.isTarget ? 3 : w.detected ? 2 : 1;
+            float until = Time.timeSinceLevelLoad + (level == 3 ? 4f : level == 2 ? 2f : 1f) + 0.5f;
+            if (pings.TryGetValue(w.emitter, out var p) && p.until > Time.timeSinceLevelLoad && p.level > level) level = p.level;
+            pings[w.emitter] = (level, until);
         }
 
         /// <summary>Mission units keep their editor UniqueName (matches the mission JSON); others use the network id.</summary>

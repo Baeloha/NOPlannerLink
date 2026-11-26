@@ -59,6 +59,16 @@ public class EncoderTests
     }
 
     [Fact]
+    public void RadarOnMeIsSentAsAChange()
+    {
+        var enc = new FrameEncoder();
+        enc.Snapshot(0, new[] { E("sam", 0) });
+        var r = E("sam", 0); r.RadarOnMe = 3;
+        var d = JsonDocument.Parse(enc.Delta(1, new[] { r })!).RootElement;
+        Assert.Equal(3, d.GetProperty("entities")[0].GetProperty("radarOnMe").GetInt32());
+    }
+
+    [Fact]
     public void SlowDriftEventuallyCrossesThreshold()
     {
         var enc = new FrameEncoder();

@@ -104,7 +104,8 @@ sealed class FakeWorld : IWorldSource
         var enemyFaction = statics.FirstOrDefault(s => s.faction != faction && s.faction != "Neutral").faction ?? "Primeva";
         double d = a + Math.PI;
         var bandit = Plane("p:201", "Fighter1", enemyFaction, cx + 25000 * Math.Sin(d), 5000, cz + 25000 * Math.Cos(d), d, 220, null, false);
-        if (Visible(intel, bandit, me)) into.Add(bandit);
+        if ((int)t % 10 < 5) bandit.RadarOnMe = 1; // the bandit's radar sweeps me now and then
+        if (Visible(intel, bandit, me) || bandit.RadarOnMe > 0) into.Add(bandit);
 
         foreach (var s in statics)
         {
@@ -113,7 +114,14 @@ sealed class FakeWorld : IWorldSource
             // Targets: the victim is my primary target until it dies; the next nearby enemy is selected too.
             if (s.id == victim) e.TargetRank = 1;
             else if (s.id == second) e.TargetRank = destroyed.Contains(victim!) ? 1 : 2;
-            if (Visible(intel, e, me)) into.Add(e);
+            // Enemy radars near me paint me: the victim locks me, other enemies within 20 km cycle painted → detected.
+            if (s.faction != faction && s.faction != "Neutral")
+            {
+                var dist = Math.Sqrt((s.x - me.X) * (s.x - me.X) + (s.z - me.Z) * (s.z - me.Z));
+                if (s.id == victim) e.RadarOnMe = 3;
+                else if (dist < 20000 && s.kind == "ground" && (s.id.GetHashCode() & 7) == 0) e.RadarOnMe = ((int)t / 3 % 3 == 0) ? 0 : (int)t / 3 % 3;
+            }
+            if (Visible(intel, e, me) || e.RadarOnMe > 0) into.Add(e);
         }
         return t;
     }

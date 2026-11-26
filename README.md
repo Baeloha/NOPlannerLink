@@ -6,6 +6,7 @@ A BepInEx 5 mod for **Nuclear Option** that streams the running game to the **NO
 - your aircraft moves live on the planner map (cyan), with a trail and a "follow me" option;
 - **players on your team are green**, friendly AI is blue, and enemies are red;
 - tanks, IFVs, SAMs, ships and other units appear at their real positions;
+- enemy radars that paint you are drawn as yellow lines to your plane, like on the in-game map;
 - the targets you lock in your aircraft are marked with a yellow reticle (primary target pulses);
 - when a target is **destroyed** it disappears from the planner map and from route exposure checks;
 - it works in 2D and 3D.
