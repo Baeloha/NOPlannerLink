@@ -128,6 +128,7 @@ public class ServerTests
     {
         public string? MissionJson(out string? name) { name = "Test"; return "{\"JsonVersion\":6}"; }
         public string? SelectTarget(string op, string? id, IntelMode effective) => effective == IntelMode.Side ? null : "only in Detected mode";
+        public string? SetOverlay(OverlaySet overlay) => null;
         public double X;
         public SessionInfo Session(IntelMode r) => new() { InMission = true, Role = "single", AllowAll = true, Intel = r };
         public double Capture(IntelMode intel, List<EntityState> into, List<GameEvent> events)
@@ -202,4 +203,35 @@ public class ServerTests
         ws.Options.SetRequestHeader("Origin", "https://evil.example");
         await Assert.ThrowsAnyAsync<WebSocketException>(() => ws.ConnectAsync(new Uri($"ws://127.0.0.1:{port}"), default));
     }
+}
+
+public class OverlayTests
+{
+    [Fact]
+    public void ParsesLinesAndLabels()
+    {
+        var set = OverlayParser.Parse("{\"type\":\"overlay\",\"lines\":[{\"pts\":[0,0,1000.5,-200,3e3,4],\"color\":\"#ff0000\",\"dots\":true,\"width\":9,\"labels\":[\"S\",\"1\",\"2\"]}],"
+            + "\"labels\":[{\"text\":\"Strike \\\"A\\\" \\u00e9\",\"x\":5,\"z\":-6,\"color\":\"#0f0\"},{\"text\":\"\"}]}");
+        var l = Assert.Single(set.Lines);
+        Assert.Equal(new float[] { 0, 0, 1000.5f, -200, 3000, 4 }, l.Pts);
+        Assert.True(l.Dots);
+        Assert.False(l.Closed);
+        Assert.Equal(6, l.Width); // clamped
+        Assert.Equal(1f, l.R);
+        Assert.Equal(0f, l.G);
+        Assert.Equal(new[] { "S", "1", "2" }, l.PointLabels);
+        var t = Assert.Single(set.Labels); // the empty one is dropped
+        Assert.Equal("Strike \"A\" é", t.Text);
+        Assert.Equal(-6, t.Z);
+        Assert.Equal(1f, t.G);
+    }
+
+    [Fact]
+    public void EmptyOverlayClears() => Assert.Equal(0, OverlayParser.Parse("{\"type\":\"overlay\",\"lines\":[],\"labels\":[]}").Count);
+
+    [Fact]
+    public void RejectsBrokenJson() => Assert.ThrowsAny<FormatException>(() => OverlayParser.Parse("{\"lines\":[{\"pts\":[1,2"));
+
+    [Fact]
+    public void LongTextIsCut() => Assert.Equal(OverlayParser.MaxText + 1, OverlayParser.Parse("{\"labels\":[{\"text\":\"" + new string('x', 500) + "\"}]}").Labels[0].Text.Length);
 }

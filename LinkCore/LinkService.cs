@@ -26,6 +26,13 @@ namespace NOPlannerLink.Core
         /// or null when not in a mission. <paramref name="name"/> = mission name.
         /// </summary>
         string? MissionJson(out string? name);
+
+        /// <summary>
+        /// Show the planner's routes / notes / shapes on the local in-game map (replaces what was sent before;
+        /// an empty set clears it). Only this player's own map; nothing is sent to other players.
+        /// Returns null when shown, else the reason it couldn't be.
+        /// </summary>
+        string? SetOverlay(OverlaySet overlay);
     }
 
     /// <summary>
@@ -67,6 +74,19 @@ namespace NOPlannerLink.Core
                     try { json = world.MissionJson(out name); if (json == null) error = "not in a mission"; }
                     catch (System.Exception ex) { error = ex.Message; }
                     server.Broadcast(FrameEncoder.Mission(name, json, error));
+                }
+                else if (type == "overlay")
+                {
+                    string? refused;
+                    var count = 0;
+                    try
+                    {
+                        var set = OverlayParser.Parse(cmd);
+                        count = set.Count;
+                        refused = world.SetOverlay(set);
+                    }
+                    catch (System.Exception ex) { refused = "error: " + ex.Message; }
+                    server.Broadcast(FrameEncoder.Event(new GameEvent { Kind = refused == null ? "overlaySet" : "overlayRefused", Text = refused ?? count.ToString(System.Globalization.CultureInfo.InvariantCulture) }));
                 }
                 else HandleCommand(cmd);
             }

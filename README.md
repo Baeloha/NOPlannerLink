@@ -6,15 +6,16 @@ A BepInEx 5 mod for **Nuclear Option** that streams the running game to the **NO
 - your aircraft moves live on the planner map (cyan), with a trail and a "follow me" option;
 - **players on your team are green**, friendly AI is blue, and enemies are red;
 - tanks, IFVs, SAMs, ships and other units appear at their real positions;
-- enemy radars that paint you are drawn as yellow lines to your plane, like on the in-game map;
+- enemy radars that paint you are drawn as yellow lines to your plane, like on the in-game map, and **red when they lock on you**;
 - missiles coming at you get a red line to your plane, and jamming is shown (JAM badges, purple lines);
 - in Detected mode you can pick targets on the planner map and they are selected in your aircraft (enemies your side has detected only);
 - on the planner's start screen you can load the mission straight from the running game (no .json needed);
+- your planner routes, notes, lines, circles and ovals can be shown **on your in-game map** (Live tab → "Show on my in-game map"; only you see them);
 - the targets you lock in your aircraft are marked with a yellow reticle (primary target pulses);
 - when a target is **destroyed** it disappears from the planner map and from route exposure checks;
 - it works in 2D and 3D.
 
-The mod only reads the game, with one exception you trigger yourself: selecting targets for your own aircraft from the planner (Detected mode only, the same targets you could click on the in-game map). It opens a WebSocket on `127.0.0.1:8787` (your
+The mod only reads the game, with two exceptions you trigger yourself: selecting targets for your own aircraft from the planner (Detected mode only, the same targets you could click on the in-game map), and drawing your own plan on your own in-game map (other players don't see it). It opens a WebSocket on `127.0.0.1:8787` (your
 own PC only), and the planner in your browser connects to it.
 
 ## Install
@@ -55,11 +56,12 @@ Every player who wants the live map installs the mod on their own PC.
 | General.UpdateRateHz | 4 | Position updates per second |
 | Intel.Default | Side | Starting intel mode (Side / All) |
 | Intel.AllowEverything | false | Host setting, see above |
+| Map.ShowPlannerDrawings | true | Show the routes / drawings you send from the planner on your in-game map |
 | Security.AllowedOrigins | planner + localhost | Web pages allowed to connect. Other websites can't read your game state. |
 
 ## Protocol
 
-JSON over WebSocket: `hello`, `snapshot`, `delta` and `event` messages; the planner sends `setIntel` and `resync`.
+JSON over WebSocket: `hello`, `snapshot`, `delta`, `event` and `mission` messages; the planner sends `setIntel`, `resync`, `target`, `getMission` and `overlay`.
 The full spec is in the planner repository, `docs/live-protocol.md`.
 
 ## Build from source
@@ -71,7 +73,7 @@ GAME_DIR="/path/to/Nuclear Option" ./build.sh      # → dist/NOPlannerLink.dll 
 ```
 
 - `LinkCore/` holds the protocol, JSON writer and WebSocket server. It has no Unity dependencies and is compiled into the plugin as source.
-- `NOPlannerLink/` is the BepInEx plugin: `Plugin.cs` (config, update loop), `GameWorld.cs` (reads `UnitRegistry` and the faction tracking database), `HostGate.cs` (host permission for "Everything").
+- `NOPlannerLink/` is the BepInEx plugin: `Plugin.cs` (config, update loop), `GameWorld.cs` (reads `UnitRegistry` and the faction tracking database), `MapOverlay.cs` (draws the planner's plan on the in-game map), `HostGate.cs` (host permission for "Everything").
 - `LinkCore.Tests/` contains unit tests and a real WebSocket end-to-end test (`dotnet test LinkCore.Tests`).
 - `LinkHarness/` is a fake game for testing the planner without Nuclear Option:
   `dotnet run --project LinkHarness -- path/to/mission.json --faction Boscali [--allow-all]`

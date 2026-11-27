@@ -8,15 +8,16 @@ namespace NOPlannerLink
 {
     /// <summary>
     /// NOPlannerLink: streams live unit positions from Nuclear Option to the NO Mission Planner
-    /// (https://nuclear-planner.vercel.app) over a WebSocket on 127.0.0.1. Read-only: it never
-    /// changes game state. Protocol: docs/live-protocol.md in the planner repository.
+    /// (https://nuclear-planner.vercel.app) over a WebSocket on 127.0.0.1. It only reads the game, except what the
+    /// player asks for from the planner: selecting targets for their own aircraft (Detected mode) and drawing their
+    /// plan on their own in-game map. Protocol: docs/live-protocol.md in the planner repository.
     /// </summary>
     [BepInPlugin(Guid, Name, Version)]
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "NOPlannerLink";
         public const string Name = "NO Planner Link";
-        public const string Version = "1.3.0";
+        public const string Version = "1.4.0";
 
         private ConfigEntry<bool> enabledCfg = null!;
         private ConfigEntry<int> port = null!;
@@ -24,6 +25,7 @@ namespace NOPlannerLink
         private ConfigEntry<bool> allowEverything = null!;
         private ConfigEntry<float> rateHz = null!;
         private ConfigEntry<string> allowedOrigins = null!;
+        private ConfigEntry<bool> showDrawings = null!;
 
         private WsServer? server;
         private LinkService? link;
@@ -42,6 +44,8 @@ namespace NOPlannerLink
             allowEverything = Config.Bind("Intel", "AllowEverything", false,
                 "HOST setting: let players in your game who run this mod see ALL units (not only what their faction has detected). " +
                 "Always allowed in single-player. Ignored when you are a client: then the host's setting decides.");
+            showDrawings = Config.Bind("Map", "ShowPlannerDrawings", true,
+                "Show the routes, notes and shapes you send from the planner (Live tab → Show on in-game map) on your in-game map. Only you see them.");
             allowedOrigins = Config.Bind("Security", "AllowedOrigins", OriginPolicy.Default,
                 "Web pages allowed to connect (comma separated, ':*' = any port, '*' = any page).");
 
@@ -65,6 +69,8 @@ namespace NOPlannerLink
             }
             gate = new HostGate(allowEverything, Logger);
             world = new GameWorld(gate);
+            world.Overlay.Visible = showDrawings.Value;
+            showDrawings.SettingChanged += (_, __) => world.Overlay.Visible = showDrawings.Value;
             link = new LinkService(server, intelDefault.Value == "All" ? IntelMode.All : IntelMode.Side, rateHz.Value, Version);
             rateHz.SettingChanged += (_, __) => link.IntervalS = 1.0 / rateHz.Value;
         }
@@ -77,6 +83,7 @@ namespace NOPlannerLink
             {
                 gate.Tick();
                 link.Tick(Time.unscaledTimeAsDouble, world);
+                world.Overlay.Tick();
             }
             catch (Exception e)
             {
@@ -88,7 +95,11 @@ namespace NOPlannerLink
             }
         }
 
-        private void OnDestroy() => server?.Dispose();
+        private void OnDestroy()
+        {
+            world?.Overlay.Dispose();
+            server?.Dispose();
+        }
         private void OnApplicationQuit() => server?.Dispose();
     }
 }

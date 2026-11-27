@@ -15,7 +15,7 @@ var missionPath = argv.FirstOrDefault(a => a.EndsWith(".json", StringComparison.
 var world = new FakeWorld(faction, allowAll, missionPath);
 using var server = new WsServer(port, new OriginPolicy("*").Allowed, Console.WriteLine);
 server.Start();
-var link = new LinkService(server, IntelMode.Side, 4, "1.3.0-harness");
+var link = new LinkService(server, IntelMode.Side, 4, "1.4.0-harness");
 Console.WriteLine($"Fake game on ws://localhost:{port} · faction {faction} · allowAll={allowAll} · {world.Describe()}");
 var clock = System.Diagnostics.Stopwatch.StartNew();
 while (true)
@@ -42,6 +42,14 @@ sealed class FakeWorld : IWorldSource
     private readonly string? missionName;
     private readonly string mapKey = "(None,)";
     public string? MissionJson(out string? name) { name = missionName; return missionText; }
+
+    public string? SetOverlay(OverlaySet overlay)
+    {
+        if (!loaded) return "not in a mission";
+        Console.WriteLine($"[harness] in-game map overlay: {overlay.Lines.Count} lines, {overlay.Labels.Count} labels" +
+            (overlay.Labels.Count > 0 ? " (" + string.Join(", ", overlay.Labels.Take(6).Select(l => l.Text)) + ")" : ""));
+        return null;
+    }
 
     public string? SelectTarget(string op, string? id, IntelMode effective)
     {
@@ -133,8 +141,9 @@ sealed class FakeWorld : IWorldSource
         var enemyFaction = statics.FirstOrDefault(s => s.faction != faction && s.faction != "Neutral").faction ?? "Primeva";
         double d = a + Math.PI;
         var bandit = Plane("p:201", "Fighter1", enemyFaction, cx + 25000 * Math.Sin(d), 5000, cz + 25000 * Math.Cos(d), d, 220, null, false);
-        if ((int)t % 10 < 5) bandit.RadarOnMe = 1; // the bandit's radar sweeps me now and then
-        else bandit.JammingMe = true;               // ...and jams me the rest of the time
+        // The bandit's radar sweeps me now and then, and every 20 s locks on for 6 s (red line in the planner).
+        bandit.RadarOnMe = (int)t % 20 >= 12 && (int)t % 20 < 18 ? 3 : (int)t % 10 < 5 ? 1 : 0;
+        if (bandit.RadarOnMe == 0) bandit.JammingMe = true; // ...and jams me the rest of the time
         if (targets != null && targets.Contains(bandit.Id)) bandit.TargetRank = targets.IndexOf(bandit.Id) + 1;
         if (Visible(intel, bandit, me) || bandit.RadarOnMe > 0) { into.Add(bandit); visible.Add(bandit.Id); }
         else visible.Remove(bandit.Id);

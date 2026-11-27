@@ -10,7 +10,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>NOPlannerLink</AssemblyName>
     <RootNamespace>NOPlannerLink</RootNamespace>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GameDir Condition="'$(GameDir)' == ''">$(MSBuildThisFileDirectory)../../raw/game</GameDir>
@@ -35,6 +35,10 @@
     <Reference Include="$(Managed)/UnityEngine.dll" Private="false" />
     <Reference Include="$(Managed)/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="$(Managed)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(Managed)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(Managed)/UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="$(Managed)/UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="$(Managed)/Unity.TextMeshPro.dll" Private="false" />
     <Reference Include="$(Managed)/com.rlabrecque.steamworks.net.dll" Private="false" Condition="Exists('$(Managed)/com.rlabrecque.steamworks.net.dll')" />
     <Reference Include="$(Managed)/UniTask.dll" Private="false" Condition="Exists('$(Managed)/UniTask.dll')" />
   </ItemGroup>

@@ -29,6 +29,16 @@ namespace NOPlannerLink
 
         public GameWorld(HostGate gate) { this.gate = gate; }
 
+        /// <summary>The planner's routes / notes / shapes drawn on the local in-game map.</summary>
+        public readonly MapOverlay Overlay = new MapOverlay();
+
+        public string? SetOverlay(OverlaySet overlay)
+        {
+            Overlay.Set(overlay);
+            if (!Overlay.Visible) return "turned off in the mod config (Map → ShowPlannerDrawings)";
+            return MapOverlay.MapAvailable || overlay.Count == 0 ? null : "saved; it appears when the in-game map is loaded";
+        }
+
         public SessionInfo Session(IntelMode requested)
         {
             var state = GameManager.gameState;
